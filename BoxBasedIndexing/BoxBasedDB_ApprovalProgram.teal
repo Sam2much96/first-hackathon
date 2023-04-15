@@ -1,0 +1,75 @@
+#pragma version 4
+// AddMonster function
+// appends the monster to the global array
+// using a box to store the monster's data
+
+// stateful contract with an approval program
+// arguments:
+// 0. NoOp: "NONE"
+// 1. AddMonster: "CREATE"
+//    name (12-byte string)
+//    attack (uint64)
+//    defense (uint64)
+//    HP (uint64)
+//    X (uint64)
+//    Y (uint64)
+//    ASAid (uint64)
+// 2. FindMonstersInLocation: "LOOKUP_BY_LOC"
+//    X (uint64)
+//    Y (uint64)
+//    radius_squared (uint64)
+
+// Maximum number of monsters that can be created
+// We assume that up to 1000 independent monsters can be created at once
+// and will be distributed uniformly across the available space
+// thus, we allocate an array of 1000 boxes to store their data
+// Each box is named by its index in the array, which is a 64-bit unsigned integer
+// The actual data for each monster will be stored inside each box
+// using the "pack" operation to concatenate all the fields of the monster in a single byte array
+// For example, the byte array for a monster with name "M1", attack 100, defense 50, HP 200, X 123, Y 456, and ASAid 1
+// would be: "4D31|0000000000000064|0000000000000032|00000000000000C8|000000000000007B|00000000000001C8|0000000000000001"
+
+// Maximum number of boxes available in a transaction
+const MAX_BOXES = 128
+// Maximum number of monsters
+const MAX_MONSTERS = 1000
+// Size of a monster data in bytes
+const MONSTER_SIZE = 12 + 8*5
+
+// This function packs the fields of a monster into a byte array
+// Each field is stored in big-endian order
+// name: 12 bytes
+// attack, defense, HP, X, Y, and ASAid: 8 bytes each
+// returns the packed byte array
+to_bytes:
+  byte "to_bytes"
+  // Arguments:
+  // 0. name (12-byte string)
+  // 1. attack (uint64)
+  // 2. defense (uint64)
+  // 3. HP (uint64)
+  // 4. X (uint64)
+  // 5. Y (uint64)
+  // 6. ASAid (uint64)
+  // Locals:
+  // 0. bytes (byte array)
+  // 1. offset (uint64)
+  // 2. i (uint64)
+  int 7
+  byte 0x00 // name
+  byte 0x01 // attack
+  byte 0x02 // defense
+  byte 0x03 // HP
+  byte 0x04 // X
+  byte 0x05 // Y
+  byte 0x06 // ASAid
+  byte 0x07 // bytes
+  byte 0x08 // offset
+  byte 0x09 // i
+  // Allocate space for the byte array
+  int MONSTER_SIZE
+  byte "app_global_put"
+  byte 0x07 // bytes
+  int 0 // key
+  int MONSTER_SIZE // value
+  // Pack the fields of the monster into the byte array
