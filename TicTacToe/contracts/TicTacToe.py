@@ -31,6 +31,10 @@ def div(a: abi.Uint64, b: abi.Uint64, *, output: abi.Uint64) -> Expr:
     return output.set(a.get() / b.get())
 
 
+
+
+
+
 def demo() -> None:
     # Here we use `sandbox` but beaker.client.api_providers can also be used
     # with something like ``AlgoNode(Network.TestNet).algod()``
