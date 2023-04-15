@@ -14,6 +14,10 @@
 # 
 # Features:
 # Contains Randomized CPU player 
+
+# To Do:
+# (1) Implement Player Names as 1 & 2 for Player and CPU
+# (2) 
 # 
 
 import random
@@ -62,7 +66,7 @@ def get_player_move():
 
 def get_cpu_move(board):
 
-    # Mini Max AI Algorithm for CPU AI
+    # Mini Max AI Algorithm for CPU
     def minimax(board, depth, is_maximizing):
         if check_win(board, 'O'):
             return 1
@@ -122,11 +126,16 @@ def tictactoe():
 
         try:
    
+
+            # Register these game state to Scratch State Value
             if board[move] != ' ':
+                # bad move
                 print("That space is already taken, please choose another.")
            
                 continue
            
+
+            # playing
             board[move] = player
             print_board(board)
             print ("GameRound: ", GameRound)
@@ -134,6 +143,7 @@ def tictactoe():
 
 
             # End Loop
+            # player won
             if check_win(board, player):
                 print("Congratulations, player " + player + " wins!")
                 break
