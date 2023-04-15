@@ -14,8 +14,9 @@ import math
 
 
 class GameState:
+    # Docs : https://algorand-devrel.github.io/beaker/html/boxes.html
     # For Player MOVES
-    state = BoxMapping(abi.Uint64, abi.Uint64) #TealType.uint64 #BoxMapping(TealType.uint64, TealType.uint64) 
+    board = BoxMapping(abi.Uint64, abi.Uint64) #TealType.uint64 #BoxMapping(TealType.uint64, TealType.uint64) 
      
 
         
@@ -34,7 +35,7 @@ def register_player_value(value: abi.Uint64) -> Expr:
     
     # Save to box Storage
     # access an element in the mapping by key
-    return tictactoe.state.state[Txn.sender()].set(value)
+    return tictactoe.state.board[Txn.sender()].set(value)
 
 
 
@@ -42,13 +43,13 @@ def register_player_value(value: abi.Uint64) -> Expr:
 @tictactoe.external
 def get_player_move(move : abi.Uint64)-> Expr:         
      
-    return tictactoe.state.state[Txn.sender()].set(move)
+    return tictactoe.state.board[Txn.sender()].set(move)
 
 
 @tictactoe.external
 def get_cpu_move(move : abi.Uint64)-> Expr:
     move.set(random.randrange(9)) # Generate Random Move
-    return tictactoe.state.state[Txn.sender()].set(move)
+    return tictactoe.state.board[Txn.sender()].set(move)
 
 
 
@@ -62,14 +63,13 @@ def check_win(board : abi.Byte, player : abi.Byte)-> Expr:
     #    (board[2] == player and board[5] == player and board[8] == player) or
     #    (board[0] == player and board[4] == player and board[8] == player) or
     #    (board[2] == player and board[4] == player and board[6] == player)):
-    if board.get() == player.get(): #Bytes("X"):
+    
+    # Get Game State From Box
+    if state.get() == player.get(): #Bytes("X"):
 
-        return Bytes("True")
+        return player.get()
     else:
-        return Bytes("False")
-
-
-
+        return player.set(Bytes("False"))
 
 
 
@@ -137,12 +137,12 @@ def minimax(board, depth, is_maximizing)-> Expr:
                     best_score = min(score, best_score)
             return best_score
 
+"""
 
 
+# Client Side Code
 
-
-
-def print_board(board)-> Expr:
+def print_board(board) :
     print("   |   |")
     print(" " + board[0] + " | " + board[1] + " | " + board[2])
     print("   |   |")
@@ -157,8 +157,9 @@ def print_board(board)-> Expr:
 
 
 
-@tictactoe.external
-def tictactoe() -> Expr:
+# Runs the Game Client for better Player UX
+
+def tictactoe_client() -> None:
     GameRound = 0
     board = [' '] * 9
     player = 'X'
@@ -170,7 +171,7 @@ def tictactoe() -> Expr:
 
     while running_game_loop:
         if player == "X":
-            move = get_player_move()#input("Enter a position from 1-9 (player " + player + "): ")
+            move = input("Enter a position from 1-9 (player " + player + "): ")
         elif player == "O":
             move = get_cpu_move(board)
 
@@ -214,42 +215,6 @@ def tictactoe() -> Expr:
             print("Invalid move, please enter a number between 1 and 9.")
             continue
 
-"""
-
-
-
-
-def demo() -> None:
-    # Here we use `sandbox` but beaker.client.api_providers can also be used
-    # with something like ``AlgoNode(Network.TestNet).algod()``
-    algod_client = sandbox.get_algod_client()
-
-    acct = sandbox.get_accounts().pop()
-
-    # Create an Application client containing both an algod client and app
-    app_client = ApplicationClient(
-        client=algod_client, app=calculator_app, signer=acct.signer
-    )
-
-    # Create the application on chain, implicitly sets the app id for the app client
-    app_id, app_addr, txid = app_client.create()
-    print(f"Created App with id: {app_id} and address addr: {app_addr} in tx: {txid}")
-
-    result = app_client.call(add, a=2, b=2)
-    print(f"add result: {result.return_value}")
-
-    result = app_client.call(mul, a=2, b=2)
-    print(f"mul result: {result.return_value}")
-
-    result = app_client.call(sub, a=6, b=2)
-    print(f"sub result: {result.return_value}")
-
-    result = app_client.call(div, a=16, b=4)
-    print(f"div result: {result.return_value}")
-
-
-
-
 
 
 
@@ -278,4 +243,4 @@ if __name__ == "__main__":
     with open("TicTacToe.json", "w") as f:
         f.write(json.dumps(calc_app_spec.to_json(), indent=4))
 
-    #demo()
+    tictactoe_client()
