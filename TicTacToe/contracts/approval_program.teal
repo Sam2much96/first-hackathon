@@ -1,6 +1,5 @@
 #pragma version 8
 intcblock 0 1
-bytecblock 0x47616d65526f756e64
 txn NumAppArgs
 intc_0 // 0
 ==
@@ -75,7 +74,7 @@ return
 // register_player
 registerplayer_0:
 proto 0 0
-bytec_0 // "GameRound"
+pushbytes 0x47616d65526f756e64 // "GameRound"
 intc_0 // 0
 app_global_put
 retsub
@@ -83,7 +82,7 @@ retsub
 // get_player_move
 getplayermove_1:
 proto 1 0
-bytec_0 // "GameRound"
+pushbytes 0x53746f72656447616d655374617465 // "StoredGameState"
 app_global_get
 intc_0 // 0
 ==

@@ -39,10 +39,19 @@ class GameState:
 
     # Global Game Round
     GameRound = GlobalStateValue(
-        stack_type = TealType.uint64
-
+        stack_type = TealType.uint64,
+        descr = " Stores the Game Round of A current runing Game"
         )
 
+
+   # Global Game State
+    StoredGameState = GlobalStateValue(
+        stack_type = TealType.uint64,
+        descr = " Stores the Game State which could either be playing, player_won, bad_move "
+        )
+
+    # Current Game State stored to a scratch var
+    GameState = ScratchVar(TealType.uint64)
 
 
 tictactoe = Application(
@@ -52,7 +61,7 @@ tictactoe = Application(
 
     )
 
-does_nothing = Int (0)
+
 
 @tictactoe.external
 def register_player() -> Expr:
@@ -67,11 +76,10 @@ def register_player() -> Expr:
 def get_player_move(move : abi.Uint64)-> Expr:         
      
     return Seq(
-
-        If (tictactoe.state.GameRound.get() == Int(0))
-        .Then(tictactoe.state.boxA[Txn.sender()].set(move))
+    
+        If (tictactoe.state.StoredGameState.get() == Int(0)) # if game playing
+        .Then(tictactoe.state.boxA[Txn.sender()].set(move)) # Save first move
         )
-
 
 @tictactoe.external
 def get_cpu_move(move : abi.Uint64)-> Expr:
@@ -84,45 +92,16 @@ def get_cpu_move(move : abi.Uint64)-> Expr:
 
 
 #@Subroutine(TealType.uint64)
-#@tictactoe.external
 
 
 #Compares the box bytes to determine a winner
 
 
-def check_win(
-    init: Expr = Int(0),
-    delete: Expr = Int(0),
-    update: Expr = Int(0),
-    opt_in: Expr = Int(0),
-    close_out: Expr = Int(0),
-    no_op: Expr = Int(0),
 
-    )-> Expr:
-    return Cond (
-        #[boxA.get() == player and boxB.get() == player and boxC.get() == player.get()]
 
-         [tictactoe.state.boxA[Txn.sender()].get() == Bytes("")], no_op,
+#         [tictactoe.state.boxA[Txn.sender()].get() == Bytes("")], no_op,
 
-         [tictactoe.state.boxA[Txn.sender()].get() == Bytes("")], no_op
-
-         )
-                  
-
-        #(board[3] == player and board[4] == player and board[5] == player) or
-    #    (board[6] == player and board[7] == player and board[8] == player) or
-    #    (board[0] == player and board[3] == player and board[6] == player) or
-    #    (board[1] == player and board[4] == player and board[7] == player) or
-    #    (board[2] == player and board[5] == player and board[8] == player) or
-    #    (board[0] == player and board[4] == player and board[8] == player) or
-    #    (board[2] == player and board[4] == player and board[6] == player)):
-    
-    # Get Game State From Box
-    #if state.get() == player.get(): #Bytes("X"):
-
-    #return player.get()
-    #else:
-    #    return player.set(Bytes("False"))
+#         [tictactoe.state.boxB[Txn.sender()].get() == Bytes("")], no_op
 
 
 
@@ -209,6 +188,25 @@ def print_board(board) :
     print("   |   |")
 
 
+def check_win(board, player):
+    synchronize_game_state(board)
+    if ((board[0] == player and board[1] == player and board[2] == player) or
+        (board[3] == player and board[4] == player and board[5] == player) or
+        (board[6] == player and board[7] == player and board[8] == player) or
+        (board[0] == player and board[3] == player and board[6] == player) or
+        (board[1] == player and board[4] == player and board[7] == player) or
+        (board[2] == player and board[5] == player and board[8] == player) or
+        (board[0] == player and board[4] == player and board[8] == player) or
+        (board[2] == player and board[4] == player and board[6] == player)):
+        return True
+    else:
+        return False
+
+
+def synchronize_game_state(board)-> None:
+    # Synchronize client board state with App State
+    pass
+
 
 # Runs the Game Client for better Player UX
 
@@ -219,7 +217,7 @@ def tictactoe_client() -> None:
 
 
     GameRound = 0
-    board = [' '] * 9
+    board : List[str] = [' '] * 9
     player = 'X'
     print("Welcome to Tic Tac Toe!")
     print_board(board)
@@ -232,6 +230,13 @@ def tictactoe_client() -> None:
             move = input("Enter a position from 1-9 (player " + player + "): ")
 
             # Send Application Call Via SmartContract
+            # Register these game state to Scratch State Value
+            move = int(move) - 1
+            if move >= 0 and move < 9 and board[move] == 0:
+                return move
+            else:
+                print("Invalid move. Try again.please enter a number between 1 and 9.")
+
 
         elif player == "O":
 
@@ -242,12 +247,7 @@ def tictactoe_client() -> None:
         try:
    
 
-            # Register these game state to Scratch State Value
-            if board[move] != ' ':
-                # bad move
-                print("That space is already taken, please choose another.")
-           
-                continue
+
            
 
             # playing
@@ -284,27 +284,30 @@ def tictactoe_client() -> None:
 
 if __name__ == "__main__":
 
-    calc_app_spec = tictactoe.build()
-    print(calc_app_spec.approval_program)
-    print(calc_app_spec.clear_program)
-    print(calc_app_spec.to_json())
-
- 
-
-
     """
     Write Out the Approval and Clear Programs. 
     Dump the Contract's method to a .json file.
 
     """
+    tictactoe_app = tictactoe.build()
+    print(tictactoe_app.approval_program)
+    
+    #print(tictactoe_app.clear_program)
+    #print(tictactoe_app.to_json())
+
+ 
 
     with open("approval_program.teal", "w") as f:
-        f.write(calc_app_spec.approval_program)
+        f.write(tictactoe_app.approval_program)
 
-    with open("clear_state_program.teal", "w") as f:
-        f.write(calc_app_spec.clear_program)
+    #with open("clear_state_program.teal", "w") as f:
+    #    f.write(calc_app_spec.clear_program)
         
-    with open("TicTacToe.json", "w") as f:
-        f.write(json.dumps(calc_app_spec.to_json(), indent=4))
+    #with open("TicTacToe.json", "w") as f:
+    #    f.write(json.dumps(calc_app_spec.to_json(), indent=4))
 
+    """
+    Run Game Loop
+
+    """
     tictactoe_client()
