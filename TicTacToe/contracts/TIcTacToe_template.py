@@ -17,6 +17,7 @@
 # 
 
 import random
+import math
 
 
 
@@ -61,13 +62,46 @@ def get_player_move():
 
 def get_cpu_move(board):
 
-        # Adding CPU AI
-
-        print ("debug: ",board)
-        move = random.randint(0, 8)
-
-        return move
-
+    # Mini Max AI Algorithm for CPU AI
+    def minimax(board, depth, is_maximizing):
+        if check_win(board, 'O'):
+            return 1
+        elif check_win(board, 'X'):
+            return -1
+        elif ' ' not in board:
+            return 0
+        
+        if is_maximizing:
+            best_score = -float('inf')
+            for i in range(9):
+                if board[i] == ' ':
+                    board[i] = 'O'
+                    score = minimax(board, depth+1, False)
+                    board[i] = ' '
+                    best_score = max(score, best_score)
+            return best_score
+        else:
+            best_score = float('inf')
+            for i in range(9):
+                if board[i] == ' ':
+                    board[i] = 'X'
+                    score = minimax(board, depth+1, True)
+                    board[i] = ' '
+                    best_score = min(score, best_score)
+            return best_score
+    
+    # Main function
+    best_score = -float('inf')
+    best_move = None
+    for i in range(9):
+        if board[i] == ' ':
+            board[i] = 'O'
+            score = minimax(board, 0, False)
+            board[i] = ' '
+            if score > best_score:
+                best_score = score
+                best_move = i
+    return best_move
 
 
 def tictactoe():
