@@ -60,6 +60,8 @@ def get_player_move():
             print("Invalid input. Try again.")
 
 def get_cpu_move():
+
+        # Adding CPU AI
     
         move = random.randint(0, 8)
         #if board[move] == 0:
@@ -69,6 +71,7 @@ def get_cpu_move():
 
 
 def tictactoe():
+    GameRound = 0
     board = [' '] * 9
     player = 'X'
     print("Welcome to Tic Tac Toe!")
@@ -92,6 +95,7 @@ def tictactoe():
            
             board[move] = player
             print_board(board)
+            print ("GameRound: ", GameRound)
             
 
 
@@ -108,6 +112,7 @@ def tictactoe():
             # Alternate Players
             if player == 'X':
                 player = 'O'
+                GameRound += 1
 
             else:
                 player = 'X'
