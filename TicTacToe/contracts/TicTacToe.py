@@ -208,6 +208,68 @@ def synchronize_game_state(board)-> None:
     pass
 
 
+    # Mini Max AI Algorithm for CPU
+def minimax(board, depth, is_maximizing):
+        if check_win(board, 'O'):
+            return 1
+        elif check_win(board, 'X'):
+            return -1
+        elif ' ' not in board:
+            return 0
+        
+        if is_maximizing:
+            best_score = -float('inf')
+            for i in range(9):
+                if board[i] == ' ':
+                    board[i] = 'O'
+                    score = minimax(board, depth+1, False)
+                    board[i] = ' '
+                    best_score = max(score, best_score)
+            return best_score
+        else:
+            best_score = float('inf')
+            for i in range(9):
+                if board[i] == ' ':
+                    board[i] = 'X'
+                    score = minimax(board, depth+1, True)
+                    board[i] = ' '
+                    best_score = min(score, best_score)
+            return best_score
+
+
+def generate_cpu_best_move(board):
+
+
+    
+    # Main function
+    best_score = -float('inf')
+    best_move = None
+    for i in range(9):
+        if board[i] == ' ':
+            board[i] = 'O'
+            score = minimax(board, 0, False)
+            board[i] = ' '
+            if score > best_score:
+                best_score = score
+                best_move = i
+    return best_move
+
+
+
+
+def get_player_move():
+
+        move = input("Enter a number between 1-9 to place your mark: ")
+        try:
+            move = int(move) - 1
+            if move >= 0 and move < 9 : #and board[move] == 0:
+                return move
+            else:
+                print("Invalid move. Try again.please enter a number between 1 and 9.")
+        except ValueError:
+            print("Invalid input. Try again.")
+
+
 # Runs the Game Client for better Player UX
 
 def tictactoe_client() -> None:
@@ -227,27 +289,21 @@ def tictactoe_client() -> None:
 
     while running_game_loop:
         if player == "X":
-            move = input("Enter a position from 1-9 (player " + player + "): ")
-
-            # Send Application Call Via SmartContract
-            # Register these game state to Scratch State Value
-            move = int(move) - 1
-            if move >= 0 and move < 9 and board[move] == 0:
-                return move
-            else:
-                print("Invalid move. Try again.please enter a number between 1 and 9.")
-
-
+            move = get_player_move()
         elif player == "O":
 
             # Get CPU move from Application Call
 
-            move = get_cpu_move(board)
+            move = generate_cpu_best_move(board)
 
         try:
    
-
-
+            # Register these game state to Scratch State Value
+            if board[move] != ' ':
+                # bad move
+                print("That space is already taken, please choose another.")
+           
+                continue
            
 
             # playing
@@ -278,7 +334,6 @@ def tictactoe_client() -> None:
         except ValueError:
             print("Invalid move, please enter a number between 1 and 9.")
             continue
-
 
 
 
