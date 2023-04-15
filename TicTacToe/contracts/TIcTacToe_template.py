@@ -17,7 +17,7 @@
 
 # To Do:
 # (1) Implement Player Names as 1 & 2 for Player and CPU
-# (2) 
+# (2) Implement Scratch Values for game state
 # 
 
 import random
@@ -52,22 +52,9 @@ def check_win(board, player):
         return False
 
 
-def get_player_move():
-
-        move = input("Enter a number between 1-9 to place your mark: ")
-        try:
-            move = int(move) - 1
-            if move >= 0 and move < 9 : #and board[move] == 0:
-                return move
-            else:
-                print("Invalid move. Try again.please enter a number between 1 and 9.")
-        except ValueError:
-            print("Invalid input. Try again.")
-
-def get_cpu_move(board):
 
     # Mini Max AI Algorithm for CPU
-    def minimax(board, depth, is_maximizing):
+def minimax(board, depth, is_maximizing):
         if check_win(board, 'O'):
             return 1
         elif check_win(board, 'X'):
@@ -93,6 +80,22 @@ def get_cpu_move(board):
                     board[i] = ' '
                     best_score = min(score, best_score)
             return best_score
+
+def get_player_move():
+
+        move = input("Enter a number between 1-9 to place your mark: ")
+        try:
+            move = int(move) - 1
+            if move >= 0 and move < 9 : #and board[move] == 0:
+                return move
+            else:
+                print("Invalid move. Try again.please enter a number between 1 and 9.")
+        except ValueError:
+            print("Invalid input. Try again.")
+
+def get_cpu_move(board):
+
+
     
     # Main function
     best_score = -float('inf')
