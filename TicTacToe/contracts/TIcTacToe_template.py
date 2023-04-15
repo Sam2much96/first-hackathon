@@ -59,13 +59,13 @@ def get_player_move():
         except ValueError:
             print("Invalid input. Try again.")
 
-def get_cpu_move():
+def get_cpu_move(board):
 
         # Adding CPU AI
-    
+
+        print ("debug: ",board)
         move = random.randint(0, 8)
-        #if board[move] == 0:
-        #    return move
+
         return move
 
 
@@ -84,7 +84,7 @@ def tictactoe():
         if player == "X":
             move = get_player_move()#input("Enter a position from 1-9 (player " + player + "): ")
         elif player == "O":
-            move = get_cpu_move()
+            move = get_cpu_move(board)
 
         try:
    
