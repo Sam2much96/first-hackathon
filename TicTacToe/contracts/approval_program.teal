@@ -1,11 +1,12 @@
 #pragma version 8
 intcblock 0 1
+bytecblock 0x47616d65526f756e64
 txn NumAppArgs
 intc_0 // 0
 ==
 bnz main_l8
 txna ApplicationArgs 0
-pushbytes 0x2715a4c0 // "register_player_value(uint64)void"
+pushbytes 0x68afbb5e // "register_player()void"
 ==
 bnz main_l7
 txna ApplicationArgs 0
@@ -54,9 +55,7 @@ intc_0 // 0
 !=
 &&
 assert
-txna ApplicationArgs 1
-btoi
-callsub registerplayervalue_0
+callsub registerplayer_0
 intc_1 // 1
 return
 main_l8:
@@ -73,21 +72,22 @@ assert
 intc_1 // 1
 return
 
-// register_player_value
-registerplayervalue_0:
-proto 1 0
-txn Sender
-box_del
-pop
-txn Sender
-frame_dig -1
-itob
-box_put
+// register_player
+registerplayer_0:
+proto 0 0
+bytec_0 // "GameRound"
+intc_0 // 0
+app_global_put
 retsub
 
 // get_player_move
 getplayermove_1:
 proto 1 0
+bytec_0 // "GameRound"
+app_global_get
+intc_0 // 0
+==
+bz getplayermove_1_l2
 txn Sender
 box_del
 pop
@@ -95,6 +95,7 @@ txn Sender
 frame_dig -1
 itob
 box_put
+getplayermove_1_l2:
 retsub
 
 // get_cpu_move

@@ -1,5 +1,5 @@
 from pyteal import *
-
+from pyteal.ast import *
 
 from beaker import Application, sandbox, GlobalStateValue
 from beaker.client import ApplicationClient
@@ -16,10 +16,34 @@ import math
 class GameState:
     # Docs : https://algorand-devrel.github.io/beaker/html/boxes.html
     # For Player MOVES
-    board = BoxMapping(abi.Uint64, abi.Uint64) #TealType.uint64 #BoxMapping(TealType.uint64, TealType.uint64) 
-     
 
+    # Use 9 Boxes with "" bytes for storing Board Placements
+
+    boxA = BoxMapping(abi.Byte, abi.Uint64) #TealType.uint64 #BoxMapping(TealType.uint64, TealType.uint64) 
+     
+    boxB = BoxMapping(abi.Uint64, abi.Uint64)
+
+    boxC = BoxMapping(abi.Uint64, abi.Uint64)
+    boxD = BoxMapping(abi.Uint64, abi.Uint64)
+    boxE = BoxMapping(abi.Uint64, abi.Uint64)
+    boxF = BoxMapping(abi.Uint64, abi.Uint64)
+    boxG = BoxMapping(abi.Uint64, abi.Uint64)
+    boxH = BoxMapping(abi.Uint64, abi.Uint64)
+    boxI = BoxMapping(abi.Uint64, abi.Uint64)
         
+    # Declare a Global Winner
+    winner = GlobalStateValue(
+        stack_type = TealType.uint64
+
+        )
+
+    # Global Game Round
+    GameRound = GlobalStateValue(
+        stack_type = TealType.uint64
+
+        )
+
+
 
 tictactoe = Application(
     "TicTacToe",
@@ -28,14 +52,13 @@ tictactoe = Application(
 
     )
 
-
+does_nothing = Int (0)
 
 @tictactoe.external
-def register_player_value(value: abi.Uint64) -> Expr:
+def register_player() -> Expr:
     
-    # Save to box Storage
-    # access an element in the mapping by key
-    return tictactoe.state.board[Txn.sender()].set(value)
+    # Save Game Round
+    return tictactoe.state.GameRound.set(Int(0))
 
 
 
@@ -43,20 +66,50 @@ def register_player_value(value: abi.Uint64) -> Expr:
 @tictactoe.external
 def get_player_move(move : abi.Uint64)-> Expr:         
      
-    return tictactoe.state.board[Txn.sender()].set(move)
+    return Seq(
+
+        If (tictactoe.state.GameRound.get() == Int(0))
+        .Then(tictactoe.state.boxA[Txn.sender()].set(move))
+        )
 
 
 @tictactoe.external
 def get_cpu_move(move : abi.Uint64)-> Expr:
-    move.set(random.randrange(9)) # Generate Random Move
-    return tictactoe.state.board[Txn.sender()].set(move)
+    # Generate Random Move
+
+    move.set(random.randrange(9))
+    # Implement Game ROund 
+    return tictactoe.state.boxA[Txn.sender()].set(move)
 
 
 
-@Subroutine(TealType.uint64)
-def check_win(board : abi.Byte, player : abi.Byte)-> Expr:
-    #if ((board[0] == player and board[1] == player and board[2] == player) or
-    #    (board[3] == player and board[4] == player and board[5] == player) or
+#@Subroutine(TealType.uint64)
+#@tictactoe.external
+
+
+#Compares the box bytes to determine a winner
+
+
+def check_win(
+    init: Expr = Int(0),
+    delete: Expr = Int(0),
+    update: Expr = Int(0),
+    opt_in: Expr = Int(0),
+    close_out: Expr = Int(0),
+    no_op: Expr = Int(0),
+
+    )-> Expr:
+    return Cond (
+        #[boxA.get() == player and boxB.get() == player and boxC.get() == player.get()]
+
+         [tictactoe.state.boxA[Txn.sender()].get() == Bytes("")], no_op,
+
+         [tictactoe.state.boxA[Txn.sender()].get() == Bytes("")], no_op
+
+         )
+                  
+
+        #(board[3] == player and board[4] == player and board[5] == player) or
     #    (board[6] == player and board[7] == player and board[8] == player) or
     #    (board[0] == player and board[3] == player and board[6] == player) or
     #    (board[1] == player and board[4] == player and board[7] == player) or
@@ -65,11 +118,11 @@ def check_win(board : abi.Byte, player : abi.Byte)-> Expr:
     #    (board[2] == player and board[4] == player and board[6] == player)):
     
     # Get Game State From Box
-    if state.get() == player.get(): #Bytes("X"):
+    #if state.get() == player.get(): #Bytes("X"):
 
-        return player.get()
-    else:
-        return player.set(Bytes("False"))
+    #return player.get()
+    #else:
+    #    return player.set(Bytes("False"))
 
 
 
@@ -160,6 +213,11 @@ def print_board(board) :
 # Runs the Game Client for better Player UX
 
 def tictactoe_client() -> None:
+
+    # Create Algod Node
+
+
+
     GameRound = 0
     board = [' '] * 9
     player = 'X'
@@ -172,7 +230,13 @@ def tictactoe_client() -> None:
     while running_game_loop:
         if player == "X":
             move = input("Enter a position from 1-9 (player " + player + "): ")
+
+            # Send Application Call Via SmartContract
+
         elif player == "O":
+
+            # Get CPU move from Application Call
+
             move = get_cpu_move(board)
 
         try:
