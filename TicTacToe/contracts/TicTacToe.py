@@ -602,7 +602,7 @@ if __name__ == "__main__":
     accts[1]['pk'] = account.address_from_private_key(accts[1]['sk']) #saves the new account's address
 
 
-    command = input("Enter command  [deploy ,play , continue ,reset ]  ")
+    command = input("Enter command  [ play , continue ,reset, deploy, quit ]  ")
     
     "*****************Perform Transactions Operations**********************"
 
@@ -644,3 +644,5 @@ if __name__ == "__main__":
 
              tictactoe_client(board)
 
+        case "quit":
+             quit()
