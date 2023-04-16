@@ -197,7 +197,7 @@ def get_player_move():
         try:
             move = int(move) - 1
             if move >= 0 and move < 9 : #and board[move] == 0:
-                board_as_int = move
+                #board_as_int = move
                 return move
             else:
                 print("Invalid move. Try again.please enter a number between 1 and 9.")
@@ -243,8 +243,8 @@ def tictactoe_client() -> None:
             # playing
             board[move] = player
             print_board(board)
-            board_as_int =move
-            print ("Board as Int: ",board_as_int)
+            board_as_int = boardToint(board)
+            print ("Board as Int: ", board_as_int)
 
 
             synchronize_game_state(algod_client, app_id, board_as_int)
@@ -440,7 +440,7 @@ def call_app_method(client, private_key, index, fee, _method, arg1 : bytes):
         method_args = [arg1],
         
         
-        boxes = [[0, "board"]], #https://developer.algorand.org/docs/get-details/dapps/smart-contracts/apps/#smart-contract-arrays
+        #boxes = [[0, "board"]], #https://developer.algorand.org/docs/get-details/dapps/smart-contracts/apps/#smart-contract-arrays
 
         )
 
@@ -464,16 +464,20 @@ def intToBytes(i):
 
 # convert game board to integer
 
-def boardToint(board_as_string_list):
+def boardToint(string_list : list):
     #string_list = ["X", "O", "", "", "", "", "", "", ""]
-    board = 0
+    
+    print ("debug: ",string_list)
+    board_ = 0
+    
     for i in range(9):
-        if board_as_string_list[i] == "X":
-            board += 1 * (3 ** i)
-        elif board_as_string_list[i] == "O":
-            board += 2 * (3 ** i)
+        #print (i)    
+        if string_list[i] == "X":
+            board_ += 1 * (3 ** i)
+        elif string_list[i] == "O":
+            board_ += 2 * (3 ** i)
 
-    return board
+    return board_
 
 
 
@@ -490,33 +494,35 @@ def intToBoard(board_as_int : int):
     return string_list
 
 
-def synchronize_game_state(client, app_id : int , board_as_int: int)-> None:
+def synchronize_game_state(client, app_id : int , board)-> None:
     
     # Convert Board List String to Bytes
     
-    board = ["X","O"] # Test board
+    #board = ["X","O"] # Test board
 
-    board_str = ''.join(board)
-    board_bytes : bytes = board_str.encode('utf-8', 'strict')
+    #board_str = ''.join(board)
+    #board_bytes : bytes = board_str.encode('utf-8', 'strict')
     #board_bytes : bytes = str(board).encode('utf-8', 'strict')
     
     #board_int = 000000000
 
     #print ("Boards as Bytes: ",board_bytes)
 
+
+
     fee = 1000
 
 
-    my_string = 1  # the string to convert to uint8
-    my_uint8 = intToBytes(my_string)
-
+    #my_string = 1  # the string to convert to uint8
+    #my_uint8 = intToBytes(my_string)
+    #board_as_int = 
 
     # recreate app method
 
 
     # Save Current Board Bytes to Smart Contract
 
-    call_app_method(client, accts[1]['sk'], app_id,fee, Sync_method, board_as_int )
+    call_app_method(client, accts[1]['sk'], app_id,fee, Sync_method, boardToint(board) )
 
 
     # Fetch Current Board State From App
@@ -562,7 +568,7 @@ if __name__ == "__main__":
         )
     #Method.from_json ("synchronize_game()")
     
-    print (Sync_method.dictify())
+    #print (Sync_method.dictify())
 
 
     with open("approval_program.teal", "w") as f:
