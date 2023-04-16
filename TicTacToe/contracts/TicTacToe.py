@@ -434,28 +434,18 @@ def delete_app(client, private_key, index):
 # Uses Atomic Transaction Composer to Interact with SmartContract
 
 # To Do: Implement Polymorphism
-def call_app_method(client, private_key, index, fee, _method, arg1 , arg2):
+def call_app_method(client, index, _method, arg1 , arg2):
 
     print ("Creating application call to App:", index)
 
-    # get sender address
-    sender = account.address_from_private_key(private_key)
-
-    # create a Signer Object
-    signer = AccountTransactionSigner(private_key)
-
-    params = client.suggested_params()
-
-    params.flat_fee = True
-    params.fee = fee
-
     # create an instance of AtomicTransactionComposer
     atc = AtomicTransactionComposer()
+
     atc.add_method_call(
         app_id = index,
         method= _method, #contract.get_method_by_name(_method),
         sender = sender,
-        sp = params,
+        sp = _params,
         signer = signer,
         method_args = [arg1, arg2],
         
@@ -524,7 +514,7 @@ def synchronize_game_state(client, app_id : int , board: int, game_state : int)-
 
     # Save Current Board Bytes to Smart Contract
 
-    call_app_method(client, accts[1]['sk'], app_id,fee, Sync_method, board , game_state)
+    call_app_method(client, app_id, Sync_method, board , game_state)
 
 
     # Synchronize client board state with App State
@@ -601,6 +591,23 @@ if __name__ == "__main__":
     accts[1]['sk'] = mnemonic.to_private_key(__mnemonic) #saves the new account's mnemonic
     accts[1]['pk'] = account.address_from_private_key(accts[1]['sk']) #saves the new account's address
 
+
+  
+
+
+        # create a Signer Object
+    signer = AccountTransactionSigner(accts[1]['sk'])
+
+
+    # get sender address
+    sender = accts[1]['pk'] #account.address_from_private_key(private_key)
+
+
+
+    #params = client.suggested_params()
+
+    _params.flat_fee = True
+    _params.fee = 1000
 
     command = input("Enter command  [ play , continue ,reset, deploy, quit ]  ")
     
