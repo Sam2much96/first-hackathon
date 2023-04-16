@@ -43,10 +43,15 @@ class GameState:
 
     # Use 9 Boxes with "" bytes for storing Board Placements
 
-    board = BoxMapping(abi.Address, abi.Byte) #TealType.uint64 #BoxMapping(TealType.uint64, TealType.uint64) 
+    #board = BoxMapping(abi.Address, abi.Uint64) #TealType.uint64 #BoxMapping(TealType.uint64, TealType.uint64) 
      
 
-        
+        # Declare a Global Winner
+    board = GlobalStateValue(
+        stack_type = TealType.uint64
+
+    )   
+    
     # Declare a Global Winner
     winner = GlobalStateValue(
         stack_type = TealType.uint64
@@ -96,15 +101,9 @@ def register_player() -> Expr:
 
 # Game Logic
 @tictactoe.external
-def synchronize_game(board : abi.Byte)-> Expr:         
-     
-    #return Seq(
-    
-    #    If (tictactoe.state.StoredGameState.get() == Int(0)) # if game playing
-    #    .Then(tictactoe.state.board[Txn.sender()].set(board)) # Save first move
-    #    )
-    return tictactoe.state.board[Txn.sender()].set(board) 
-
+def synchronize_game(board : abi.Uint64)-> Expr:         
+    #return tictactoe.state.board[Txn.sender()].set(board) # for box storage
+    return tictactoe.state.board.set(board.get())
 
 
 
@@ -185,6 +184,8 @@ def generate_cpu_best_move(board):
             if score > best_score:
                 best_score = score
                 best_move = i
+
+    board_as_int = best_move
     return best_move
 
 
@@ -196,6 +197,7 @@ def get_player_move():
         try:
             move = int(move) - 1
             if move >= 0 and move < 9 : #and board[move] == 0:
+                board_as_int = move
                 return move
             else:
                 print("Invalid move. Try again.please enter a number between 1 and 9.")
@@ -207,9 +209,9 @@ def get_player_move():
 
 def tictactoe_client() -> None:
 
-
+    board_as_int = 0
     GameRound = 0
-    board : List[str] = [' '] * 9
+    board : list[str] = [' '] * 9
     player = 'X'
     print("Welcome to Tic Tac Toe!")
     print_board(board)
@@ -241,9 +243,11 @@ def tictactoe_client() -> None:
             # playing
             board[move] = player
             print_board(board)
+            board_as_int =move
+            print ("Board as Int: ",board_as_int)
 
 
-            synchronize_game_state(algod_client, accts[1]['pk'], app_id, board)
+            synchronize_game_state(algod_client, app_id, board_as_int)
             print ("GameRound: ", GameRound)
             
 
@@ -290,20 +294,6 @@ def deploy(_params, mnemonic_ ,algod_client, fee, global_ints : int , global_byt
     local_schema = StateSchema(local_ints, local_bytes)
 
 
-    # Read the compiled approvl & clear programs Teal files 
-    
-    """
-   
-    """
-
-    #with open("algobank_approval.teal", "r") as f:
-    #   approval_program = f.read()
-
-    #with open("algobank_clear_state.teal", "r") as f:
-    #    clear_state_program= f.read()
-   
-
-
 
     response = algod_client.compile(tictactoe_app.approval_program)
     print ("Raw Response =",response )
@@ -317,10 +307,7 @@ def deploy(_params, mnemonic_ ,algod_client, fee, global_ints : int , global_byt
     # compile program to binary
     clear_state_program_compiled = compile_program(algod_client, tictactoe_app.clear_program)
 
-    #print(tictactoe_app.approval_program)
-    
-    #print(tictactoe_app.clear_program)
-    #print(tictactoe_app.to_json())
+
 
     app_id = create_app(algod_client,_params ,mnemonic_, approval_program_compiled, clear_state_program_compiled, global_schema, local_schema)
 
@@ -430,7 +417,7 @@ def delete_app(client, private_key, index):
 # Uses Atomic Transaction Composer to Interact with SmartContract
 
 # To Do: Implement Polymorphism
-def call_app_method(client, private_key, index, fee, _method, arg1):
+def call_app_method(client, private_key, index, fee, _method, arg1 : bytes):
     # get sender address
     sender = account.address_from_private_key(private_key)
 
@@ -469,16 +456,59 @@ def call_app_method(client, private_key, index, fee, _method, arg1):
 
 
 
-def synchronize_game_state(client, app_id, board)-> None:
+# convert 64 bit integer i to byte string
+def intToBytes(i):
+    return i.to_bytes(8, "big")
+
+
+
+# convert game board to integer
+
+def boardToint(board_as_string_list):
+    #string_list = ["X", "O", "", "", "", "", "", "", ""]
+    board = 0
+    for i in range(9):
+        if board_as_string_list[i] == "X":
+            board += 1 * (3 ** i)
+        elif board_as_string_list[i] == "O":
+            board += 2 * (3 ** i)
+
+    return board
+
+
+
+def intToBoard(board_as_int : int):
+    string_list = [""] * 9
+    for i in range(9):
+        digit = board % 3
+        if digit == 1:
+            string_list[i] = "X"
+        elif digit == 2:
+            string_list[i] = "O"
+        board //= 3
+
+    return string_list
+
+
+def synchronize_game_state(client, app_id : int , board_as_int: int)-> None:
     
     # Convert Board List String to Bytes
+    
+    board = ["X","O"] # Test board
 
     board_str = ''.join(board)
-    board_bytes = board_str.encode('utf-8')
-    board_bytes = bytes(str(board).encode('utf-8'))
-    print ("Boards as Bytes: ",board_bytes)
+    board_bytes : bytes = board_str.encode('utf-8', 'strict')
+    #board_bytes : bytes = str(board).encode('utf-8', 'strict')
+    
+    #board_int = 000000000
+
+    #print ("Boards as Bytes: ",board_bytes)
 
     fee = 1000
+
+
+    my_string = 1  # the string to convert to uint8
+    my_uint8 = intToBytes(my_string)
 
 
     # recreate app method
@@ -486,7 +516,7 @@ def synchronize_game_state(client, app_id, board)-> None:
 
     # Save Current Board Bytes to Smart Contract
 
-    call_app_method(client, accts[1]['sk'], app_id,fee, Sync_method, board_bytes)
+    call_app_method(client, accts[1]['sk'], app_id,fee, Sync_method, board_as_int )
 
 
     # Fetch Current Board State From App
@@ -521,24 +551,24 @@ if __name__ == "__main__":
     ## returns synchronize game method
     __method = (y['contract']['methods'][1])
 
-    print (__method)
+    #print (__method)
 
     Sync_method =Method(
         name = __method['name'],
-        args = [Argument("byte")],
-        desc= " Sync",
+        args = [Argument("uint64")], # byte encoding bug, reverting to utf8
+        desc= " Syncs method calls to SmartContract",
         returns = Returns('void'),
 
         )
     #Method.from_json ("synchronize_game()")
-    #print (Method)
+    
+    print (Sync_method.dictify())
 
 
     with open("approval_program.teal", "w") as f:
         f.write(tictactoe_app.approval_program)
 
-    #with open("tictactoe_app.json", "w") as f:
-     #   f.write(tictactoe_app.to_json())
+
 
 
 
@@ -564,7 +594,7 @@ if __name__ == "__main__":
     __mnemonic : str = "tank game arrive train bring taxi tackle popular bacon gasp tell pigeon error step leaf zone suit chest next swim luggage oblige opinion about execute"
 
     # For Testing
-    app_id : int = 194379765
+    app_id : int = 194398904
 
 
     accts = {}
@@ -586,7 +616,7 @@ if __name__ == "__main__":
 
                 # Deploy Smart Contract if not already deployed
                 
-                app_id = deploy(_params, accts[1]['sk'],  algod_client, 1000, 0,0)
+                app_id = deploy(_params, accts[1]['sk'],  algod_client, 1000, 4,10)
 
 
         case "play":
@@ -599,4 +629,4 @@ if __name__ == "__main__":
 
 
         case "sync":
-            synchronize_game_state(algod_client,app_id, "")
+            synchronize_game_state(algod_client,app_id, 0)
