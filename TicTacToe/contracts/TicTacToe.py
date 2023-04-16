@@ -1,7 +1,7 @@
 from pyteal import *
 from pyteal.ast import *
 
-from beaker import Application, sandbox, GlobalStateValue
+from beaker import Application, sandbox, GlobalStateValue, BuildOptions
 from beaker.client import ApplicationClient
 
 from beaker.lib.storage import BoxMapping
@@ -66,10 +66,17 @@ class GameState:
 tictactoe = Application(
     "TicTacToe",
     descr = " TicTacToe game. A Scratch variable for the Game State using Box storage",
-    state =GameState()
+    state =GameState(),
+    build_options=BuildOptions(
+            avm_version=8, scratch_slots=True, frame_pointers=True
+        )
 
     )
 
+
+
+
+#def __init__():
 
 
 @tictactoe.external
@@ -459,13 +466,13 @@ def call_app_method(client, private_key, index, fee, _method, arg1, arg2):
 
 if __name__ == "__main__":
 
-    """
-    Write Out the Approval and Clear Programs. 
-    Dump the Contract's method to a .json file.
+    
 
-    """
+    # Build Smart Contract
     tictactoe_app = tictactoe.build()
-    print(tictactoe_app.approval_program)
+
+
+    #print(tictactoe_app.approval_program)
     
     #print(tictactoe_app.clear_program)
     #print(tictactoe_app.to_json())
