@@ -484,12 +484,12 @@ def boardToint(string_list : list):
 def intToBoard(board_as_int : int):
     string_list = [""] * 9
     for i in range(9):
-        digit = board % 3
+        digit = board_as_int % 3
         if digit == 1:
             string_list[i] = "X"
         elif digit == 2:
             string_list[i] = "O"
-        board //= 3
+        board_as_int //= 3
 
     return string_list
 
@@ -577,6 +577,10 @@ if __name__ == "__main__":
 
 
 
+    # debug board as int
+
+    #print (intToBoard(6_730)) #works
+
 
     """
     Run Game Loop
@@ -609,7 +613,7 @@ if __name__ == "__main__":
     accts[1]['pk'] = account.address_from_private_key(accts[1]['sk']) #saves the new account's address
 
 
-    command = input("Enter command  [deploy ,play , sync ,delete]  ")
+    command = input("Enter command  [deploy ,play , reset ]  ")
     
     "*****************Perform Transactions Operations**********************"
 
@@ -634,5 +638,5 @@ if __name__ == "__main__":
             delete_app(algod_client, accts[1]['sk'], app_id)
 
 
-        case "sync":
+        case "reset":
             synchronize_game_state(algod_client,app_id, 0)
