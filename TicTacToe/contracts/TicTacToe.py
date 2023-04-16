@@ -19,11 +19,18 @@ import math
 from algosdk.v2client import algod
 from algosdk import account
 from algosdk import mnemonic
+from algosdk.abi import Contract, Method, Returns, Argument
+
+from algosdk.abi import ByteType
+
 #from algosdk import logic
 
 from algosdk import transaction
 from algosdk.transaction import StateSchema 
-import algosdk.atomic_transaction_composer 
+
+#import algosdk.atomic_transaction_composer 
+from algosdk.atomic_transaction_composer import AccountTransactionSigner, AtomicTransactionComposer
+
 import base64
 
 
@@ -65,10 +72,10 @@ class GameState:
 
 tictactoe = Application(
     "TicTacToe",
-    descr = " TicTacToe game. A Scratch variable for the Game State using Box storage",
+    descr = " A TicTacToe game with CPU best-move AI",
     state =GameState(),
     build_options=BuildOptions(
-            avm_version=8, scratch_slots=True, frame_pointers=True
+            avm_version=8, scratch_slots=True, frame_pointers=True, 
         )
 
     )
@@ -89,13 +96,14 @@ def register_player() -> Expr:
 
 # Game Logic
 @tictactoe.external
-def set_player_move(board : abi.Byte)-> Expr:         
+def synchronize_game(board : abi.Byte)-> Expr:         
      
-    return Seq(
+    #return Seq(
     
-        If (tictactoe.state.StoredGameState.get() == Int(0)) # if game playing
-        .Then(tictactoe.state.board[Txn.sender()].set(board)) # Save first move
-        )
+    #    If (tictactoe.state.StoredGameState.get() == Int(0)) # if game playing
+    #    .Then(tictactoe.state.board[Txn.sender()].set(board)) # Save first move
+    #    )
+    return tictactoe.state.board[Txn.sender()].set(board) 
 
 
 
@@ -130,27 +138,6 @@ def check_win(board, player):
         return True
     else:
         return False
-
-
-def synchronize_game_state(client, player_addr, app_id, board)-> None:
-    
-    # Convert Board List String to Bytes
-
-    board_str = ''.join(board)
-    board_bytes = board_str.encode('utf-8')
-    board_bytes = bytes(str(board).encode('utf-8'))
-    print ("Boards as Bytes: ",board_bytes)
-
-
-
-    # Save Current Board Bytes to Smart Contract
-
-    call_app_method(client, __mnemonic, app_id,fee, _method,  arg1, board_bytes)
-
-
-
-
-    # Synchronize client board state with App State
 
 
 
@@ -341,10 +328,18 @@ def deploy(_params, mnemonic_ ,algod_client, fee, global_ints : int , global_byt
     print(f"Created App with id: {app_id} ")
 
 
+
+
+
+
 # helper function to compile program source
 def compile_program(client, source_code):
     compile_response = client.compile(source_code)
     return base64.b64decode(compile_response['result'])
+
+
+
+
 
 # create new application
 def create_app(client, params, private_key, approval_program, clear_program, global_schema, local_schema):
@@ -388,6 +383,10 @@ def create_app(client, params, private_key, approval_program, clear_program, glo
 
     return app_id
 
+
+
+
+
 # delete application
 def delete_app(client, private_key, index):
     # declare sender
@@ -424,9 +423,14 @@ def delete_app(client, private_key, index):
     print("Deleted app-id:", transaction_response["txn"]["txn"]["apid"])
 
 
+
+
+
+
 # Uses Atomic Transaction Composer to Interact with SmartContract
 
-def call_app_method(client, private_key, index, fee, _method, arg1, arg2):
+# To Do: Implement Polymorphism
+def call_app_method(client, private_key, index, fee, _method, arg1):
     # get sender address
     sender = account.address_from_private_key(private_key)
 
@@ -446,7 +450,7 @@ def call_app_method(client, private_key, index, fee, _method, arg1, arg2):
         sender = sender,
         sp = params,
         signer = signer,
-        method_args = [arg1,arg2],
+        method_args = [arg1],
         
         
         boxes = [[0, "board"]], #https://developer.algorand.org/docs/get-details/dapps/smart-contracts/apps/#smart-contract-arrays
@@ -464,9 +468,41 @@ def call_app_method(client, private_key, index, fee, _method, arg1, arg2):
     print("Result confirmed in round: {}".format(results.confirmed_round))
 
 
+
+def synchronize_game_state(client, app_id, board)-> None:
+    
+    # Convert Board List String to Bytes
+
+    board_str = ''.join(board)
+    board_bytes = board_str.encode('utf-8')
+    board_bytes = bytes(str(board).encode('utf-8'))
+    print ("Boards as Bytes: ",board_bytes)
+
+    fee = 1000
+
+
+    # recreate app method
+
+
+    # Save Current Board Bytes to Smart Contract
+
+    call_app_method(client, accts[1]['sk'], app_id,fee, Sync_method, board_bytes)
+
+
+    # Fetch Current Board State From App
+
+    #print("Depositors Address: ", app_client.application_box_by_name(app_id,bytes("board".encode('utf-8', 'strict'))))
+
+    # Synchronize client board state with App State
+
+
+
+
 if __name__ == "__main__":
 
     
+
+
 
     # Build Smart Contract
     tictactoe_app = tictactoe.build()
@@ -475,12 +511,34 @@ if __name__ == "__main__":
     #print(tictactoe_app.approval_program)
     
     #print(tictactoe_app.clear_program)
-    #print(tictactoe_app.to_json())
+    tictactoe_app.to_json()
 
- 
+    y= json.loads(tictactoe_app.to_json())
+    
+    #print(y)
+
+
+    ## returns synchronize game method
+    __method = (y['contract']['methods'][1])
+
+    print (__method)
+
+    Sync_method =Method(
+        name = __method['name'],
+        args = [Argument("byte")],
+        desc= " Sync",
+        returns = Returns('void'),
+
+        )
+    #Method.from_json ("synchronize_game()")
+    #print (Method)
+
 
     with open("approval_program.teal", "w") as f:
         f.write(tictactoe_app.approval_program)
+
+    #with open("tictactoe_app.json", "w") as f:
+     #   f.write(tictactoe_app.to_json())
 
 
 
@@ -506,7 +564,7 @@ if __name__ == "__main__":
     __mnemonic : str = "tank game arrive train bring taxi tackle popular bacon gasp tell pigeon error step leaf zone suit chest next swim luggage oblige opinion about execute"
 
     # For Testing
-    app_id : int = 194377401
+    app_id : int = 194379765
 
 
     accts = {}
@@ -515,7 +573,7 @@ if __name__ == "__main__":
     accts[1]['pk'] = account.address_from_private_key(accts[1]['sk']) #saves the new account's address
 
 
-    command = input("Enter command  [deploy,play,delete]  ")
+    command = input("Enter command  [deploy ,play , sync ,delete]  ")
     
     "*****************Perform Transactions Operations**********************"
 
@@ -538,3 +596,7 @@ if __name__ == "__main__":
 
         case "delete":
             delete_app(algod_client, accts[1]['sk'], app_id)
+
+
+        case "sync":
+            synchronize_game_state(algod_client,app_id, "")

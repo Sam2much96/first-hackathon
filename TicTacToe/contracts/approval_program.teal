@@ -9,7 +9,7 @@ pushbytes 0x68afbb5e // "register_player()void"
 ==
 bnz main_l5
 txna ApplicationArgs 0
-pushbytes 0xd3c33b5f // "set_player_move(byte)void"
+pushbytes 0xa8d25539 // "synchronize_game(byte)void"
 ==
 bnz main_l4
 err
@@ -25,7 +25,7 @@ assert
 txna ApplicationArgs 1
 intc_0 // 0
 getbyte
-callsub setplayermove_1
+callsub synchronizegame_1
 intc_1 // 1
 return
 main_l5:
@@ -62,14 +62,9 @@ intc_0 // 0
 app_global_put
 retsub
 
-// set_player_move
-setplayermove_1:
+// synchronize_game
+synchronizegame_1:
 proto 1 0
-pushbytes 0x53746f72656447616d655374617465 // "StoredGameState"
-app_global_get
-intc_0 // 0
-==
-bz setplayermove_1_l2
 txn Sender
 box_del
 pop
@@ -79,5 +74,4 @@ intc_0 // 0
 frame_dig -1
 setbyte
 box_put
-setplayermove_1_l2:
 retsub
