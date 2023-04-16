@@ -494,7 +494,7 @@ def intToBoard(board_as_int : int):
     return string_list
 
 
-def synchronize_game_state(client, app_id : int , board)-> None:
+def synchronize_game_state(client, app_id : int , board: int)-> None:
     
     # Convert Board List String to Bytes
     
@@ -522,7 +522,7 @@ def synchronize_game_state(client, app_id : int , board)-> None:
 
     # Save Current Board Bytes to Smart Contract
 
-    call_app_method(client, accts[1]['sk'], app_id,fee, Sync_method, boardToint(board) )
+    call_app_method(client, accts[1]['sk'], app_id,fee, Sync_method, board )
 
 
     # Fetch Current Board State From App
