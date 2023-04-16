@@ -565,8 +565,9 @@ if __name__ == "__main__":
 
 
     """
-    Run Game Loop
+    Run Game Loop (For Testing)
 
+    
     """
 
 
@@ -586,6 +587,7 @@ if __name__ == "__main__":
     app_id : int = 194435708 #194398904
 
 
+    # Generate Account for Playing
     accts = {}
     accts[1] = {}    
     accts[1]['sk'] = mnemonic.to_private_key(__mnemonic) #saves the new account's mnemonic

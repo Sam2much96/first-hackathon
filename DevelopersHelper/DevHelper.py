@@ -22,5 +22,6 @@ def GenerateTEAL(filename: str) -> str:
     return template
 
 
-if __name__ == "__main__":
-    print(GenerateTEAL("Test1.json"))
+# For Local Testing
+#if __name__ == "__main__":
+#    print(GenerateTEAL("Test1.json"))

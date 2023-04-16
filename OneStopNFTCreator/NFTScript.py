@@ -1,33 +1,33 @@
 import hashlib
 import json
 
-import algosdk
+import base64
+
+from algosdk import mnemonic, account
+from algosdk.transaction import AssetConfigTxn, AssetTransferTxn, AssetOptInTxn, wait_for_confirmation
+
 from algosdk.v2client import algod
 from beaker import sandbox
 
 
-def mintNFT(algod_client, creator_address, creator_private_key, asset_name, asset_unit_name):
+def mintNFT(algodClient, creatorAddress, creatorPrivateKey, assetName, assetUnitName):
     #...
 
 
 
 
 
-    params = algod_client.suggested_params()
+    params = algodClient.suggested_params()
 
-    
-    accounts = {}
-    accounts[1] = {}
-    accounts[1]['pk'] = mnemonic.to_public_key(creator_private_key) #saves the new account's address
-    accounts[1]['sk'] = mnemonic.to_private_key(creator_private_key) #saves the new account's mnemonic
+    print ("Minting ", assetName, " to ", creatorAddress)
 
 
-    txn =AssetConfigTxn(sender=accounts[1]['pk'],
+    txn =AssetConfigTxn(sender=creatorAddress,
                         sp=params,
                         total=1,           # NFTs have totalIssuance of exactly 1
                         default_frozen=False,
-                        unit_name=asset_unit_name,
-                        asset_name=asset_name,
+                        unit_name=assetUnitName,
+                        asset_name=assetName,
                         manager=None,
                         reserve=None,
                         freeze=False,
@@ -37,93 +37,135 @@ def mintNFT(algod_client, creator_address, creator_private_key, asset_name, asse
                         decimals=0,
                         strict_empty_address_check=False)        # NFTs have decimals of exactly 0
 
-    signed_txn = txn.sign(accounts[1]['sk'])
+    signed_txn = txn.sign(creatorPrivateKey)
 
      # submit transaction
-    txid = algod_client.send_transaction(signed_txn)
+    txid = algodClient.send_transaction(signed_txn)
     print("Signed transaction with txID: {}".format(txid))
 
     # wait for confirmation 
     try:
-        confirmed_txn = wait_for_confirmation(algod_client, txid, 4)  
+        confirmed_txn = wait_for_confirmation(algodClient, txid, 4)  
     except Exception as err:
         print(err)
         return
     
     print("Transaction information: {}".format(
         json.dumps(confirmed_txn, indent=4)))
-    print("Decoded note: {}".format(base64.b64decode(
-        confirmed_txn["txn"]["txn"]["note"]).decode()))
-
-    print("Starting Account balance: {} microAlgos".format(account_info.get('amount')) )
-    #print("Amount transfered: {} microAlgos".format(amount) )    
-    print("Fee: {} microAlgos".format(params.fee) ) 
-
-    account_info = algod_client.account_info(__account)
-    idx = 0
-    found_asset = None
-    for my_account_info in account_info['assets']:
-        scrutinized_asset = account_info['assets'][idx]
-        idx = idx + 1        
-        if scrutinized_asset['asset-id'] == assetid:
-            found_asset = scrutinized_asset
-            break
-
-    if found_asset is not None:
-        return "Asset ID: {}".format(found_asset['asset-id'])
-    else:
-        return "Asset not found"
-
+   
+ 
+    print ("Asset ID: ",confirmed_txn["asset-index"])
             
 
 
 
 
-def transferNFT(algod_client, creator_address, creator_private_key, receiver_address, receiver_private_key, asset_id):
+def transferNFT(algodClient, SenderAddress, SenderPrivateKey, ReceiverAddress, ReceiverPrivateKey, assetID):
     
 
-    params = algod_client.suggested_params()
+    params = algodClient.suggested_params()
 
 
     # construct asset transfer
 
-    asset_tx = algod_client.construct_asset_xfer( # rewrite this as a separate function
-        params,
-        from_address,
-        to_address,
-        amount_,
-        asset_id
+    asset_tx = AssetTransferTxn( 
+        sender=SenderAddress,
+        sp=params,
+        receiver=ReceiverAddress,
+        amt=1,
+        index=assetID
     )
+
+
+    signed_asset_transfer=asset_tx.sign(SenderPrivateKey)
     
+
 
     # construct asset optin
 
-    optin_tx = algod_client.construct_asset_opt_in(
-            params,
-            receiver_address,
-            asset_id
+    optin_tx = AssetTransferTxn(
+            sender = ReceiverAddress,
+            sp= params,
+            receiver=ReceiverAddress,
+            amt=0,
+            index=assetID
             )
+
+    signed_asset_optin=optin_tx.sign(ReceiverPrivateKey)
 
 
     # create grouped Transaction
 
-    txns = algod.group_transactions([asset_tx, optin_tx])
-
-
-    #Sign Both Transactions with their respective Mnemonics
-
-    txns[0] = algod_client.sign_transaction(txns[0], creator_private_key)
-    txns[1] = algod_client.sign_transaction(txns[1], receiver_private_key)
-
+   
     # Send Signed Transaction
 
-    txid = algod_client.send_transactions(txns)
 
+    txid= algodClient.send_transaction(signed_asset_optin)
+    txid2 = algodClient.send_transaction(signed_asset_transfer)
+    
+    
     print("Signed transaction with txID: {}".format(txid))
 
-    # wait for confirmation 
+    print("Signed transaction with txID: {}".format(txid2))
+
+    
+     #wait for confirmation 
     try:
-        confirmed_txn = wait_for_confirmation(algod_client, txid, 4)  
+       confirmed_txn = wait_for_confirmation(algodClient, txid2, 4)  
+       print ("Confirmed in round: {}".format(confirmed_txn['confirmed-round']))
     except Exception as err:
         print(err)
         return
+
+
+
+# For local testing
+"""
+
+
+if __name__ == "__main__":
+
+    # Create Algod Client
+
+    algod_address = "https://node.testnet.algoexplorerapi.io"
+    algod_token = ""
+    algod_client = algod.AlgodClient(algod_token, algod_address)
+
+
+
+    _params = algod_client.suggested_params()
+
+    __mnemonic : str = "tank game arrive train bring taxi tackle popular bacon gasp tell pigeon error step leaf zone suit chest next swim luggage oblige opinion about execute"
+
+
+
+    __mnemonic_2 : str = "degree feature waste gospel screen near subject boost wreck proof caution hen adapt fiber fault level blind entry also embark oval board bunker absorb garage"
+
+
+
+
+    # Generate Account for Playing
+    accts = {}
+    accts[1] = {}    
+    accts[1]['sk'] = mnemonic.to_private_key(__mnemonic) #saves the new account's mnemonic
+    accts[1]['pk'] = account.address_from_private_key(accts[1]['sk']) #saves the new account's address
+
+
+    accts[2] = {}    
+    accts[2]['sk'] = mnemonic.to_private_key(__mnemonic_2) #saves the new account's mnemonic
+    accts[2]['pk'] = account.address_from_private_key(accts[2]['sk']) #saves the new account's address
+
+
+
+
+
+    asset_id = 194442343
+
+
+    #mintNFT(algod_client, accts[1]['pk'], accts[1]['sk'], "HackaCoin 4", "hc")
+
+    transferNFT(algod_client, accts[1]['pk'], accts[1]['sk'], accts[2]['pk'], accts[2]['sk'], asset_id)
+
+
+
+    """
