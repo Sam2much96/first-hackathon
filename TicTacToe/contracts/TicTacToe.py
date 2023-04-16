@@ -13,23 +13,32 @@ import random
 import math
 
 
+
+
+# Algod Client Required Imports
+from algosdk.v2client import algod
+from algosdk import account
+from algosdk import mnemonic
+#from algosdk import logic
+
+from algosdk import transaction
+from algosdk.transaction import StateSchema 
+import algosdk.atomic_transaction_composer 
+import base64
+
+
+
+# Smart Cntract
+
 class GameState:
     # Docs : https://algorand-devrel.github.io/beaker/html/boxes.html
     # For Player MOVES
 
     # Use 9 Boxes with "" bytes for storing Board Placements
 
-    boxA = BoxMapping(abi.Byte, abi.Uint64) #TealType.uint64 #BoxMapping(TealType.uint64, TealType.uint64) 
+    board = BoxMapping(abi.Address, abi.Byte) #TealType.uint64 #BoxMapping(TealType.uint64, TealType.uint64) 
      
-    boxB = BoxMapping(abi.Uint64, abi.Uint64)
 
-    boxC = BoxMapping(abi.Uint64, abi.Uint64)
-    boxD = BoxMapping(abi.Uint64, abi.Uint64)
-    boxE = BoxMapping(abi.Uint64, abi.Uint64)
-    boxF = BoxMapping(abi.Uint64, abi.Uint64)
-    boxG = BoxMapping(abi.Uint64, abi.Uint64)
-    boxH = BoxMapping(abi.Uint64, abi.Uint64)
-    boxI = BoxMapping(abi.Uint64, abi.Uint64)
         
     # Declare a Global Winner
     winner = GlobalStateValue(
@@ -73,103 +82,17 @@ def register_player() -> Expr:
 
 # Game Logic
 @tictactoe.external
-def get_player_move(move : abi.Uint64)-> Expr:         
+def set_player_move(board : abi.Byte)-> Expr:         
      
     return Seq(
     
         If (tictactoe.state.StoredGameState.get() == Int(0)) # if game playing
-        .Then(tictactoe.state.boxA[Txn.sender()].set(move)) # Save first move
+        .Then(tictactoe.state.board[Txn.sender()].set(board)) # Save first move
         )
 
-@tictactoe.external
-def get_cpu_move(move : abi.Uint64)-> Expr:
-    # Generate Random Move
-
-    move.set(random.randrange(9))
-    # Implement Game ROund 
-    return tictactoe.state.boxA[Txn.sender()].set(move)
 
 
 
-#@Subroutine(TealType.uint64)
-
-
-#Compares the box bytes to determine a winner
-
-
-
-
-#         [tictactoe.state.boxA[Txn.sender()].get() == Bytes("")], no_op,
-
-#         [tictactoe.state.boxB[Txn.sender()].get() == Bytes("")], no_op
-
-
-
-"""
-
-@tictactoe.external
-def add(a: abi.Uint64, b: abi.Uint64, *, output: abi.Uint64) -> Expr:
-    #Add a and b, return the result
-    return output.set(a.get() + b.get())
-
-
-@tictactoe.external
-def mul(a: abi.Uint64, b: abi.Uint64, *, output: abi.Uint64) -> Expr:
-    #Multiply a and b, return the result
-    return output.set(a.get() * b.get())
-
-
-@tictactoe.external
-def sub(a: abi.Uint64, b: abi.Uint64, *, output: abi.Uint64) -> Expr:
-    #Subtract b from a, return the result
-    return output.set(a.get() - b.get())
-
-
-@tictactoe.external
-def div(a: abi.Uint64, b: abi.Uint64, *, output: abi.Uint64) -> Expr:
-    #Divide a by b, return the result
-    return output.set(a.get() / b.get())
-
-
-
-
-
-
-
-
-
-
-
-
-
-def minimax(board, depth, is_maximizing)-> Expr:
-        if check_win(board, 'O'):
-            return 1
-        elif check_win(board, 'X'):
-            return -1
-        elif ' ' not in board:
-            return 0
-        
-        if is_maximizing:
-            best_score = -float('inf')
-            for i in range(9):
-                if board[i] == ' ':
-                    board[i] = 'O'
-                    score = minimax(board, depth+1, False)
-                    board[i] = ' '
-                    best_score = max(score, best_score)
-            return best_score
-        else:
-            best_score = float('inf')
-            for i in range(9):
-                if board[i] == ' ':
-                    board[i] = 'X'
-                    score = minimax(board, depth+1, True)
-                    board[i] = ' '
-                    best_score = min(score, best_score)
-            return best_score
-
-"""
 
 
 # Client Side Code
@@ -189,7 +112,6 @@ def print_board(board) :
 
 
 def check_win(board, player):
-    synchronize_game_state(board)
     if ((board[0] == player and board[1] == player and board[2] == player) or
         (board[3] == player and board[4] == player and board[5] == player) or
         (board[6] == player and board[7] == player and board[8] == player) or
@@ -203,9 +125,26 @@ def check_win(board, player):
         return False
 
 
-def synchronize_game_state(board)-> None:
+def synchronize_game_state(client, player_addr, app_id, board)-> None:
+    
+    # Convert Board List String to Bytes
+
+    board_str = ''.join(board)
+    board_bytes = board_str.encode('utf-8')
+    board_bytes = bytes(str(board).encode('utf-8'))
+    print ("Boards as Bytes: ",board_bytes)
+
+
+
+    # Save Current Board Bytes to Smart Contract
+
+    call_app_method(client, __mnemonic, app_id,fee, _method,  arg1, board_bytes)
+
+
+
+
     # Synchronize client board state with App State
-    pass
+
 
 
     # Mini Max AI Algorithm for CPU
@@ -274,9 +213,6 @@ def get_player_move():
 
 def tictactoe_client() -> None:
 
-    # Create Algod Node
-
-
 
     GameRound = 0
     board : List[str] = [' '] * 9
@@ -290,6 +226,7 @@ def tictactoe_client() -> None:
     while running_game_loop:
         if player == "X":
             move = get_player_move()
+
         elif player == "O":
 
             # Get CPU move from Application Call
@@ -297,6 +234,7 @@ def tictactoe_client() -> None:
             move = generate_cpu_best_move(board)
 
         try:
+
    
             # Register these game state to Scratch State Value
             if board[move] != ' ':
@@ -309,6 +247,9 @@ def tictactoe_client() -> None:
             # playing
             board[move] = player
             print_board(board)
+
+
+            synchronize_game_state(algod_client, accts[1]['pk'], app_id, board)
             print ("GameRound: ", GameRound)
             
 
@@ -337,6 +278,185 @@ def tictactoe_client() -> None:
 
 
 
+# Utility Methods
+
+
+def deploy(_params, mnemonic_ ,algod_client, fee, global_ints : int , global_bytes : int):
+
+    _params.flat_fee = True
+    _params.fee = fee
+
+
+    # declare application state storage (immutable)
+    local_ints = 0
+    local_bytes = 0
+    #global_ints = 0
+    #global_bytes = 0
+    global_schema = StateSchema(global_ints, global_bytes)
+    local_schema = StateSchema(local_ints, local_bytes)
+
+
+    # Read the compiled approvl & clear programs Teal files 
+    
+    """
+   
+    """
+
+    #with open("algobank_approval.teal", "r") as f:
+    #   approval_program = f.read()
+
+    #with open("algobank_clear_state.teal", "r") as f:
+    #    clear_state_program= f.read()
+   
+
+
+
+    response = algod_client.compile(tictactoe_app.approval_program)
+    print ("Raw Response =",response )
+    print("Response Result = ",response['result'])
+    print("Response Hash = ",response['hash'])
+
+
+    # compile program to binary
+    approval_program_compiled = compile_program(algod_client, tictactoe_app.approval_program)
+
+    # compile program to binary
+    clear_state_program_compiled = compile_program(algod_client, tictactoe_app.clear_program)
+
+    #print(tictactoe_app.approval_program)
+    
+    #print(tictactoe_app.clear_program)
+    #print(tictactoe_app.to_json())
+
+    app_id = create_app(algod_client,_params ,mnemonic_, approval_program_compiled, clear_state_program_compiled, global_schema, local_schema)
+
+    # Create the applicatiion on chain, set the app id for the app client & store app secret
+    print(f"Created App with id: {app_id} ")
+
+
+# helper function to compile program source
+def compile_program(client, source_code):
+    compile_response = client.compile(source_code)
+    return base64.b64decode(compile_response['result'])
+
+# create new application
+def create_app(client, params, private_key, approval_program, clear_program, global_schema, local_schema):
+    # define sender as creator
+    sender = account.address_from_private_key(private_key)
+
+    #print (sender)
+
+    # declare on_complete as NoOp
+    on_complete = transaction.OnComplete.NoOpOC.real
+
+    # get node suggested parameters
+    #params = client.suggested_params()
+
+    # create unsigned transaction
+    txn = transaction.ApplicationCreateTxn(sender, params, on_complete, \
+                                            approval_program, clear_program, \
+                                            global_schema, local_schema)
+
+    # sign transaction
+    signed_txn = txn.sign(private_key)
+    tx_id = signed_txn.transaction.get_txid()
+
+    # send transaction
+    client.send_transactions([signed_txn])
+
+    # wait for confirmation
+    try:
+        transaction_response = transaction.wait_for_confirmation(client, tx_id, 4)
+        print("TXID: ", tx_id)
+        print("Result confirmed in round: {}".format(transaction_response['confirmed-round']))
+
+    except Exception as err:
+        print(err)
+        return
+
+    # display results
+    transaction_response = client.pending_transaction_info(tx_id)
+    app_id = transaction_response['application-index']
+    print("Created new app-id:", app_id)
+
+    return app_id
+
+# delete application
+def delete_app(client, private_key, index):
+    # declare sender
+    sender = account.address_from_private_key(private_key)
+
+    # get node suggested parameters
+    params = client.suggested_params()
+    # comment out the next two (2) lines to use suggested fees
+    #params.flat_fee = True
+    #params.fee = 1000
+
+    # create unsigned transaction
+    txn = transaction.ApplicationDeleteTxn(
+        sender= sender, 
+        sp= params, 
+        index= index,
+        
+        #Disabling boxes until implementation in Algonaut
+        #boxes=[[0, "BoxA"],[0, "BoxB"],[0, "BoxC"], [0,""],[0,""],[0,""]],
+        )
+
+    # sign transaction
+    signed_txn = txn.sign(private_key)
+    tx_id = signed_txn.transaction.get_txid()
+
+    # send transaction
+    client.send_transactions([signed_txn])
+
+    # await confirmation
+    wait_for_confirmation(client, tx_id)
+
+    # display results
+    transaction_response = client.pending_transaction_info(tx_id)
+    print("Deleted app-id:", transaction_response["txn"]["txn"]["apid"])
+
+
+# Uses Atomic Transaction Composer to Interact with SmartContract
+
+def call_app_method(client, private_key, index, fee, _method, arg1, arg2):
+    # get sender address
+    sender = account.address_from_private_key(private_key)
+
+    # create a Signer Object
+    signer = AccountTransactionSigner(private_key)
+
+    params = client.suggested_params()
+
+    params.flat_fee = True
+    params.fee = fee
+
+    # create an instance of AtomicTransactionComposer
+    atc = AtomicTransactionComposer()
+    atc.add_method_call(
+        app_id = index,
+        method= _method, #contract.get_method_by_name(_method),
+        sender = sender,
+        sp = params,
+        signer = signer,
+        method_args = [arg1,arg2],
+        
+        
+        boxes = [[0, "board"]], #https://developer.algorand.org/docs/get-details/dapps/smart-contracts/apps/#smart-contract-arrays
+
+        )
+
+        
+
+
+    #send transaction
+    results = atc.execute(client, 2)
+
+    #wait for confirmation
+    print("TXID: ", results.tx_ids[0])
+    print("Result confirmed in round: {}".format(results.confirmed_round))
+
+
 if __name__ == "__main__":
 
     """
@@ -355,14 +475,59 @@ if __name__ == "__main__":
     with open("approval_program.teal", "w") as f:
         f.write(tictactoe_app.approval_program)
 
-    #with open("clear_state_program.teal", "w") as f:
-    #    f.write(calc_app_spec.clear_program)
-        
-    #with open("TicTacToe.json", "w") as f:
-    #    f.write(json.dumps(calc_app_spec.to_json(), indent=4))
+
 
     """
     Run Game Loop
 
     """
-    tictactoe_client()
+
+    __mnemonic : str = "tank game arrive train bring taxi tackle popular bacon gasp tell pigeon error step leaf zone suit chest next swim luggage oblige opinion about execute"
+
+
+
+    # Create Algod Node
+        # test-net
+    algod_address = "https://node.testnet.algoexplorerapi.io"
+    algod_token = ""
+    algod_client = algod.AlgodClient(algod_token, algod_address)
+
+
+
+    _params = algod_client.suggested_params()
+
+    __mnemonic : str = "tank game arrive train bring taxi tackle popular bacon gasp tell pigeon error step leaf zone suit chest next swim luggage oblige opinion about execute"
+
+    # For Testing
+    app_id : int = 194377401
+
+
+    accts = {}
+    accts[1] = {}    
+    accts[1]['sk'] = mnemonic.to_private_key(__mnemonic) #saves the new account's mnemonic
+    accts[1]['pk'] = account.address_from_private_key(accts[1]['sk']) #saves the new account's address
+
+
+    command = input("Enter command  [deploy,play,delete]  ")
+    
+    "*****************Perform Transactions Operations**********************"
+
+    match command:
+        case "deploy":
+    
+
+
+                
+
+                # Deploy Smart Contract if not already deployed
+                
+                app_id = deploy(_params, accts[1]['sk'],  algod_client, 1000, 0,0)
+
+
+        case "play":
+
+         tictactoe_client()
+
+
+        case "delete":
+            delete_app(algod_client, accts[1]['sk'], app_id)
