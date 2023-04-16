@@ -117,9 +117,13 @@ def synchronize_game(board : abi.Uint64, game_state: abi.Uint64)-> Expr:
 
 
 
-
+"""
 
 # Client Side Code
+
+"""
+
+
 
 def print_board(board) :
     print("   |   |")
@@ -182,7 +186,7 @@ def minimax(board, depth, is_maximizing):
 def generate_cpu_best_move(board):
 
 
-    
+    print ("CPU Playing ...")
     # Main function
     best_score = -float('inf')
     best_move = None
@@ -215,13 +219,15 @@ def get_player_move():
             print("Invalid input. Try again.")
 
 
+
+
 # Runs the Game Client for better Player UX
 
-def tictactoe_client() -> None:
+def tictactoe_client(board : list[str]) -> None:
 
     board_as_int = 0
     GameRound = 0
-    board : list[str] = [' '] * 9
+    
     player = 'X'
     print("Welcome to Tic Tac Toe!")
     print_board(board)
@@ -429,6 +435,9 @@ def delete_app(client, private_key, index):
 
 # To Do: Implement Polymorphism
 def call_app_method(client, private_key, index, fee, _method, arg1 , arg2):
+
+    print ("Creating application call to App:", index)
+
     # get sender address
     sender = account.address_from_private_key(private_key)
 
@@ -478,7 +487,7 @@ def intToBytes(i):
 def boardToint(string_list : list):
     #string_list = ["X", "O", "", "", "", "", "", "", ""]
     
-    print ("debug: ",string_list)
+    #print ("debug: ",string_list)
     board_ = 0
     
     for i in range(9):
@@ -511,7 +520,7 @@ def synchronize_game_state(client, app_id : int , board: int, game_state : int)-
 
     fee = 1000
 
-
+    print ("Synchronizing Game State")
 
     # Save Current Board Bytes to Smart Contract
 
@@ -584,7 +593,7 @@ if __name__ == "__main__":
     __mnemonic : str = "tank game arrive train bring taxi tackle popular bacon gasp tell pigeon error step leaf zone suit chest next swim luggage oblige opinion about execute"
 
     # For Testing
-    app_id : int = 194398904
+    app_id : int = 194435708 #194398904
 
 
     accts = {}
@@ -593,7 +602,7 @@ if __name__ == "__main__":
     accts[1]['pk'] = account.address_from_private_key(accts[1]['sk']) #saves the new account's address
 
 
-    command = input("Enter command  [deploy ,play , reset ]  ")
+    command = input("Enter command  [deploy ,play , continue ,reset ]  ")
     
     "*****************Perform Transactions Operations**********************"
 
@@ -611,7 +620,9 @@ if __name__ == "__main__":
 
         case "play":
 
-         tictactoe_client()
+         board : list[str] = [' '] * 9
+
+         tictactoe_client(board)
 
 
         case "delete":
@@ -620,3 +631,16 @@ if __name__ == "__main__":
 
         case "reset":
             synchronize_game_state(algod_client,app_id, 0, 0)
+
+        case "continue":
+
+            # load board from smart contract globals
+
+             data =algod_client.application_info(app_id)
+             
+             board : list[str] = (intToBoard(data['params']['global-state'][0]['value']['uint']))
+
+             # send board data and start game
+
+             tictactoe_client(board)
+
