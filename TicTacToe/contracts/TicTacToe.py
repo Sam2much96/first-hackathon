@@ -67,12 +67,12 @@ class GameState:
 
    # Global Game State
     StoredGameState = GlobalStateValue(
-        stack_type = TealType.uint64,
+        stack_type = TealType.bytes,
         descr = " Stores the Game State which could either be playing, player_won, bad_move "
         )
 
     # Current Game State stored to a scratch var
-    GameState = ScratchVar(TealType.uint64)
+    GameState = ScratchVar(TealType.bytes)
 
 
 tictactoe = Application(
@@ -101,9 +101,19 @@ def register_player() -> Expr:
 
 # Game Logic
 @tictactoe.external
-def synchronize_game(board : abi.Uint64)-> Expr:         
+def synchronize_game(board : abi.Uint64, game_state: abi.Uint64)-> Expr:         
     #return tictactoe.state.board[Txn.sender()].set(board) # for box storage
-    return tictactoe.state.board.set(board.get())
+    return Seq(
+        tictactoe.state.board.set(board.get()),
+
+        If(game_state.get() == Int (0))
+         .Then(tictactoe.state.GameState.store(Bytes("playing")))
+         .ElseIf(game_state.get() == Int (1))
+         .Then(tictactoe.state.GameState.store(Bytes("bad move")))
+         .ElseIf(game_state.get() == Int (2))
+         .Then(tictactoe.state.GameState.store(Bytes("player won")))
+
+        )
 
 
 
@@ -236,7 +246,7 @@ def tictactoe_client() -> None:
             if board[move] != ' ':
                 # bad move
                 print("That space is already taken, please choose another.")
-           
+                synchronize_game_state(algod_client, app_id, board_as_int, 1) # bad move
                 continue
            
 
@@ -247,7 +257,7 @@ def tictactoe_client() -> None:
             print ("Board as Int: ", board_as_int)
 
 
-            synchronize_game_state(algod_client, app_id, board_as_int)
+            synchronize_game_state(algod_client, app_id, board_as_int, 0) #playing
             print ("GameRound: ", GameRound)
             
 
@@ -256,6 +266,7 @@ def tictactoe_client() -> None:
             # player won
             if check_win(board, player):
                 print("Congratulations, player " + player + " wins!")
+                synchronize_game_state(algod_client, app_id, board_as_int, 2) # player won
                 break
             if ' ' not in board:
                 print("It's a tie!")
@@ -417,7 +428,7 @@ def delete_app(client, private_key, index):
 # Uses Atomic Transaction Composer to Interact with SmartContract
 
 # To Do: Implement Polymorphism
-def call_app_method(client, private_key, index, fee, _method, arg1 : bytes):
+def call_app_method(client, private_key, index, fee, _method, arg1 , arg2):
     # get sender address
     sender = account.address_from_private_key(private_key)
 
@@ -437,7 +448,7 @@ def call_app_method(client, private_key, index, fee, _method, arg1 : bytes):
         sender = sender,
         sp = params,
         signer = signer,
-        method_args = [arg1],
+        method_args = [arg1, arg2],
         
         
         #boxes = [[0, "board"]], #https://developer.algorand.org/docs/get-details/dapps/smart-contracts/apps/#smart-contract-arrays
@@ -494,40 +505,18 @@ def intToBoard(board_as_int : int):
     return string_list
 
 
-def synchronize_game_state(client, app_id : int , board: int)-> None:
+def synchronize_game_state(client, app_id : int , board: int, game_state : int)-> None:
     
-    # Convert Board List String to Bytes
-    
-    #board = ["X","O"] # Test board
-
-    #board_str = ''.join(board)
-    #board_bytes : bytes = board_str.encode('utf-8', 'strict')
-    #board_bytes : bytes = str(board).encode('utf-8', 'strict')
-    
-    #board_int = 000000000
-
-    #print ("Boards as Bytes: ",board_bytes)
-
 
 
     fee = 1000
 
 
-    #my_string = 1  # the string to convert to uint8
-    #my_uint8 = intToBytes(my_string)
-    #board_as_int = 
-
-    # recreate app method
-
 
     # Save Current Board Bytes to Smart Contract
 
-    call_app_method(client, accts[1]['sk'], app_id,fee, Sync_method, board )
+    call_app_method(client, accts[1]['sk'], app_id,fee, Sync_method, board , game_state)
 
-
-    # Fetch Current Board State From App
-
-    #print("Depositors Address: ", app_client.application_box_by_name(app_id,bytes("board".encode('utf-8', 'strict'))))
 
     # Synchronize client board state with App State
 
@@ -561,13 +550,11 @@ if __name__ == "__main__":
 
     Sync_method =Method(
         name = __method['name'],
-        args = [Argument("uint64")], # byte encoding bug, reverting to utf8
+        args = [Argument("uint64"), Argument("uint64")], # byte encoding bug, reverting to utf8
         desc= " Syncs method calls to SmartContract",
         returns = Returns('void'),
 
         )
-    #Method.from_json ("synchronize_game()")
-    
     #print (Sync_method.dictify())
 
 
@@ -577,18 +564,11 @@ if __name__ == "__main__":
 
 
 
-    # debug board as int
-
-    #print (intToBoard(6_730)) #works
-
 
     """
     Run Game Loop
 
     """
-
-    __mnemonic : str = "tank game arrive train bring taxi tackle popular bacon gasp tell pigeon error step leaf zone suit chest next swim luggage oblige opinion about execute"
-
 
 
     # Create Algod Node
@@ -639,4 +619,4 @@ if __name__ == "__main__":
 
 
         case "reset":
-            synchronize_game_state(algod_client,app_id, 0)
+            synchronize_game_state(algod_client,app_id, 0, 0)
